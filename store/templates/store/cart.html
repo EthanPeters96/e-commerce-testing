@@ -1,0 +1,96 @@
+{% extends "store/base.html" %}
+
+{% block title %}Shopping Cart{% endblock %}
+
+{% block content %}
+<div class="cart-page">
+    <div class="cart-header">
+        <h1 class="cart-title">Shopping Cart</h1>
+        <p class="cart-subtitle">Review and manage your items</p>
+    </div>
+
+    {% if cart_items %}
+    <div class="cart-container">
+        <div class="cart-items">
+            {% for item in cart_items %}
+            <div class="cart-item">
+                <div class="cart-item-image">
+                    {% if item.product.image %}
+                    <a href="{% url 'store:product_detail' item.product.slug %}">
+                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="cart-item-details">
+                    <h3 class="cart-item-name">{{ item.product.name }}</h3>
+                    <p class="cart-item-description">{{ item.product.description|truncatewords:15 }}</p>
+                    <div class="cart-item-price">£{{ item.product.price|floatformat:2 }}</div>
+                </div>
+                <div class="cart-item-quantity">
+                    <form method="post" action="{% url 'store:update_cart' product_id=item.product.id %}" class="quantity-form">
+                        {% csrf_token %}
+                        <select name="quantity" class="form-select" onchange="this.form.submit()">
+                            {% for i in "123456789"|make_list %}
+                            <option value="{{ i }}" {% if forloop.counter == item.quantity %}selected{% endif %}>{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+                <div class="cart-item-total">
+                    <span class="total-label">Total:</span>
+                    <span class="total-amount">£{{ item.total_price|floatformat:2 }}</span>
+                </div>
+                <div class="cart-item-actions">
+                    <form method="post" action="{% url 'store:remove_from_cart' product_id=item.product.id %}" class="remove-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-remove">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="cart-summary">
+            <div class="summary-card">
+                <h3 class="summary-title">Order Summary</h3>
+                <div class="summary-details">
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span>£{{ total_price|floatformat:2 }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping</span>
+                        <span>Free</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total</span>
+                        <span>£{{ total_price|floatformat:2 }}</span>
+                    </div>
+                </div>
+                <div class="summary-actions">
+                    <a href="{% url 'store:product_list' %}" class="btn btn-continue">
+                        <i class="bi bi-arrow-left"></i> Continue Shopping
+                    </a>
+                    <a href="{% url 'store:checkout' %}" class="btn btn-checkout">
+                        Proceed to Checkout <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-cart">
+        <div class="empty-cart-icon">
+            <i class="bi bi-cart-x"></i>
+        </div>
+        <h2>Your cart is empty</h2>
+        <p>Looks like you haven't added any items to your cart yet.</p>
+        <a href="{% url 'store:product_list' %}" class="btn btn-primary btn-lg">
+            Start Shopping
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

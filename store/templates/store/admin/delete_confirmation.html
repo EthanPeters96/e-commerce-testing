@@ -1,0 +1,32 @@
+{% extends "store/base.html" %} {% block title %}Delete {{ object_type|title }}{% endblock %} {% block extra_head %} {% load static %}
+<link rel="stylesheet" href="{% static 'store/css/admin.css' %}" />
+{% endblock %} {% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card delete-confirmation">
+                <div class="card-header">
+                    <h4 class="mb-0">Delete {{ object_type|title }}</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Are you sure you want to delete "{{ object.name }}"?</p>
+                    {% if object_type == 'category' %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Warning: Deleting this category will also delete all products associated with it.
+                    </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Delete {{ object_type|title }}</button>
+                            <a href="{% url back_url %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

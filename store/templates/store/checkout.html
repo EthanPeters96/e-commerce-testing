@@ -1,0 +1,239 @@
+{% extends "store/base.html" %} {% block title %}Checkout{% endblock %} {% block extra_head %}
+<script src="https://js.stripe.com/v3/"></script>
+{% endblock %} {% block content %}
+<div class="checkout-page">
+    <div class="checkout-header">
+        <h1 class="checkout-title">Checkout</h1>
+        <p class="checkout-subtitle">Complete your order</p>
+    </div>
+
+    <div class="checkout-container">
+        <div class="checkout-form-container">
+            <div class="checkout-form-card">
+                <form id="payment-form" method="POST">
+                    {% csrf_token %}
+                    <div class="form-section">
+                        <h3 class="form-section-title"><i class="bi bi-person"></i> Contact Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="firstName" name="firstName" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="lastName" name="lastName" required />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required />
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3 class="form-section-title"><i class="bi bi-geo-alt"></i> Shipping Address</h3>
+                        <div class="form-group">
+                            <label for="address" class="form-label">Address</label>
+                            <input type="text" class="form-control" id="address" name="address" required />
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="city" class="form-label">City</label>
+                                <input type="text" class="form-control" id="city" name="city" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="state" class="form-label">County</label>
+                                <input type="text" class="form-control" id="state" name="state" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="zipCode" class="form-label">Postcode</label>
+                                <input type="text" class="form-control" id="zipCode" name="zipCode" required />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="country" class="form-label">Country</label>
+                            <input type="text" class="form-control" id="country" name="country" value="United Kingdom" required />
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3 class="form-section-title"><i class="bi bi-credit-card"></i> Payment Information</h3>
+                        <div id="card-element" class="card-element">
+                            <!-- Stripe Card Element will be inserted here -->
+                        </div>
+                        <div id="card-errors" class="card-errors" role="alert"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-checkout" id="submit-button">
+                        <span id="button-text">Place Order</span>
+                        <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="checkout-summary">
+            <div class="summary-card">
+                <h3 class="summary-title">Order Summary</h3>
+                <div class="summary-items">
+                    {% for item in cart_items %}
+                    <div class="summary-item">
+                        <div class="item-image">
+                            {% if item.product.image %}
+                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" />
+                            {% endif %}
+                        </div>
+                        <div class="item-details">
+                            <h4 class="item-name">{{ item.product.name }}</h4>
+                            <p class="item-quantity">Quantity: {{ item.quantity }}</p>
+                        </div>
+                        <div class="item-price">£{{ item.total_price|floatformat:2 }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="summary-totals">
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span>£{{ total_price|floatformat:2 }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping</span>
+                        <span>Free</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Tax</span>
+                        <span>£0.00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total</span>
+                        <span>£{{ total_price|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+    // Create a Stripe client
+    const stripe = Stripe('{{ stripe_publishable_key }}');
+    const elements = stripe.elements();
+
+    // Create an instance of the card Element
+    const card = elements.create('card', {
+        style: {
+            base: {
+                fontSize: '16px',
+                color: '#2c3e50',
+                '::placeholder': {
+                    color: '#aab7c4',
+                },
+            },
+            invalid: {
+                color: '#dc3545',
+                iconColor: '#dc3545',
+            },
+        },
+    });
+
+    // Mount the card Element
+    card.mount('#card-element');
+
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    const submitButton = document.getElementById('submit-button');
+    const spinner = document.getElementById('spinner');
+    const buttonText = document.getElementById('button-text');
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        // Disable the submit button to prevent repeated clicks
+        submitButton.disabled = true;
+        spinner.classList.remove('d-none');
+        buttonText.textContent = 'Processing...';
+
+        // Create a PaymentMethod
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
+            type: 'card',
+            card: card,
+        });
+
+        if (error) {
+            // Handle errors
+            const errorElement = document.getElementById('card-errors');
+            errorElement.textContent = error.message;
+            submitButton.disabled = false;
+            spinner.classList.add('d-none');
+            buttonText.textContent = 'Place Order';
+            return;
+        }
+
+        // Get form data
+        const formData = new FormData(form);
+        const orderData = {
+            payment_method_id: paymentMethod.id,
+            shipping_info: {
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                email: formData.get('email'),
+                address: formData.get('address'),
+                city: formData.get('city'),
+                state: formData.get('state'),
+                zipCode: formData.get('zipCode'),
+                country: formData.get('country'),
+            },
+        };
+
+        try {
+            // Send the order data to your server
+            const response = await fetch('', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                },
+                body: JSON.stringify(orderData),
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            if (result.requires_action) {
+                // Handle additional authentication if required
+                const { error: actionError } = await stripe.handleCardAction(result.payment_intent_client_secret);
+
+                if (actionError) {
+                    throw new Error(actionError.message);
+                }
+
+                // Payment successful after additional authentication
+                window.location.href = result.success_url;
+            } else {
+                // Payment successful
+                window.location.href = result.success_url;
+            }
+        } catch (error) {
+            // Handle errors
+            const errorElement = document.getElementById('card-errors');
+            errorElement.textContent = error.message;
+            submitButton.disabled = false;
+            spinner.classList.add('d-none');
+            buttonText.textContent = 'Place Order';
+        }
+    });
+
+    // Handle real-time validation errors on the card Element
+    card.addEventListener('change', function (event) {
+        const displayError = document.getElementById('card-errors');
+        if (event.error) {
+            displayError.textContent = event.error.message;
+        } else {
+            displayError.textContent = '';
+        }
+    });
+</script>
+{% endblock %}
